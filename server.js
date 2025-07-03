@@ -13,7 +13,14 @@ app.use(express.json());
 // Google Calendar Configuration
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const REDIRECT_URI = process.env.REDIRECT_URI || 'http://localhost:3000/auth/callback';
+
+// Detectar se está rodando localmente ou no Render
+const isProduction = process.env.NODE_ENV === 'production';
+const BASE_URL = isProduction ? process.env.RENDER_EXTERNAL_URL : `http://localhost:${PORT}`;
+const REDIRECT_URI = `${BASE_URL}/auth/callback`;
+
+console.log('Base URL:', BASE_URL);
+console.log('Redirect URI:', REDIRECT_URI);
 
 // OAuth2 client
 const oauth2Client = new google.auth.OAuth2(
@@ -322,7 +329,7 @@ app.get('/auth/callback', async (req, res) => {
           <div class="info">
             <p>Your Google Calendar is now connected!</p>
             <p>You can now use the MCP endpoint:</p>
-            <p><strong>${req.protocol}://${req.get('host')}/mcp</strong></p>
+            <p><strong>${BASE_URL}/mcp</strong></p>
             <p>You can close this window.</p>
           </div>
         </body>
@@ -387,7 +394,7 @@ app.post('/mcp', async (req, res) => {
       case "tools/call":
         if (!isAuthenticated()) {
           return res.json(createError(id, -32001, "Authentication required", {
-            auth_url: `${req.protocol}://${req.get('host')}/auth`
+            auth_url: `${BASE_URL}/auth`
           }));
         }
         
@@ -665,7 +672,7 @@ app.get('/info', (req, res) => {
       description: tool.description
     })),
     authenticated: isAuthenticated(),
-    auth_url: isAuthenticated() ? null : `${req.protocol}://${req.get('host')}/auth`
+    auth_url: isAuthenticated() ? null : `${BASE_URL}/auth`
   });
 });
 
@@ -698,12 +705,12 @@ app.get('/', (req, res) => {
         </div>
         
         ${!authStatus ? 
-          '<p><a href="/auth" class="button">Connect Google Calendar</a></p>' : 
+          `<p><a href="/auth" class="button">Connect Google Calendar</a></p>` : 
           ''
         }
         
         <h2>MCP Endpoint</h2>
-        <div class="endpoint">${req.protocol}://${req.get('host')}/mcp</div>
+        <div class="endpoint">${BASE_URL}/mcp</div>
         
         <h2>Available Tools</h2>
         <ul>
@@ -724,10 +731,11 @@ app.get('/', (req, res) => {
 // Start server
 app.listen(PORT, () => {
   console.log(`MCP Google Calendar Server running on port ${PORT}`);
-  console.log(`Health check: http://localhost:${PORT}/health`);
-  console.log(`Server info: http://localhost:${PORT}/info`);
-  console.log(`MCP endpoint: http://localhost:${PORT}/mcp`);
-  console.log(`Authentication: http://localhost:${PORT}/auth`);
+  console.log(`Base URL: ${BASE_URL}`);
+  console.log(`Health check: ${BASE_URL}/health`);
+  console.log(`Server info: ${BASE_URL}/info`);
+  console.log(`MCP endpoint: ${BASE_URL}/mcp`);
+  console.log(`Authentication: ${BASE_URL}/auth`);
 });
 
 module.exports = app;
