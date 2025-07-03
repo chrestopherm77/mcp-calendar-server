@@ -261,13 +261,13 @@ function createResponse(id, result = null, error = null) {
     jsonrpc: "2.0",
     id: id
   };
-  
+
   if (error) {
     response.error = error;
   } else {
     response.result = result;
   }
-  
+
   return response;
 }
 
@@ -290,7 +290,7 @@ function getCalendarClient() {
   if (!isAuthenticated()) {
     throw new Error('User not authenticated. Please authenticate first.');
   }
-  
+
   oauth2Client.setCredentials(userTokens);
   return google.calendar({ version: 'v3', auth: oauth2Client });
 }
@@ -302,18 +302,18 @@ app.get('/auth', (req, res) => {
     scope: SCOPES,
     prompt: 'consent'
   });
-  
+
   res.redirect(authUrl);
 });
 
 app.get('/auth/callback', async (req, res) => {
   const { code } = req.query;
-  
+
   try {
     const { tokens } = await oauth2Client.getToken(code);
     userTokens = tokens;
     oauth2Client.setCredentials(tokens);
-    
+
     res.send(`
       <html>
         <head>
@@ -363,11 +363,11 @@ app.get('/auth/callback', async (req, res) => {
 app.post('/mcp', async (req, res) => {
   try {
     const { jsonrpc, method, params, id } = req.body;
-    
+
     if (jsonrpc !== "2.0") {
       return res.json(createError(id, -32600, "Invalid Request"));
     }
-    
+
     switch (method) {
       case "initialize":
         res.json(createResponse(id, {
@@ -380,28 +380,28 @@ app.post('/mcp', async (req, res) => {
           serverInfo: SERVER_INFO
         }));
         break;
-        
+
       case "notifications/initialized":
         res.json(createResponse(id, {}));
         break;
-        
+
       case "tools/list":
         res.json(createResponse(id, {
           tools: TOOLS
         }));
         break;
-        
+
       case "tools/call":
         if (!isAuthenticated()) {
           return res.json(createError(id, -32001, "Authentication required", {
             auth_url: `${BASE_URL}/auth`
           }));
         }
-        
+
         const result = await handleToolCall(params);
         res.json(createResponse(id, result));
         break;
-        
+
       default:
         res.json(createError(id, -32601, "Method not found"));
     }
@@ -414,7 +414,7 @@ app.post('/mcp', async (req, res) => {
 // Handle tool calls
 async function handleToolCall(params) {
   const { name, arguments: args } = params;
-  
+
   switch (name) {
     case "create_event":
       return await createEvent(args);
@@ -439,32 +439,32 @@ async function handleToolCall(params) {
 async function createEvent(args) {
   const calendar = getCalendarClient();
   const calendarId = args.calendar_id || 'primary';
-  
+
   const event = {
     summary: args.title,
     description: args.description || '',
     location: args.location || '',
     start: {
       dateTime: args.start_time,
-      timeZone: 'America/Sao_Paulo'
+      timeZone: 'America/Sao_Paulo' // Changed from 'UTC' to 'America/Sao_Paulo'
     },
     end: {
       dateTime: args.end_time,
-      timeZone: 'America/Sao_Paulo'
+      timeZone: 'America/Sao_Paulo' // Changed from 'UTC' to 'America/Sao_Paulo'
     }
   };
-  
+
   if (args.attendees && args.attendees.length > 0) {
     event.attendees = args.attendees.map(email => ({ email }));
   }
-  
+
   try {
     const response = await calendar.events.insert({
       calendarId,
       resource: event,
       sendNotifications: true
     });
-    
+
     return {
       content: [{
         type: "text",
@@ -480,21 +480,22 @@ async function createEvent(args) {
 async function listEvents(args) {
   const calendar = getCalendarClient();
   const calendarId = args.calendar_id || 'primary';
-  
+
   const params = {
     calendarId,
     maxResults: args.max_results || 10,
     singleEvents: args.single_events !== false,
-    orderBy: 'startTime'
+    orderBy: 'startTime',
+    timeZone: 'America/Sao_Paulo' // Added timeZone for listing events
   };
-  
+
   if (args.time_min) params.timeMin = args.time_min;
   if (args.time_max) params.timeMax = args.time_max;
-  
+
   try {
     const response = await calendar.events.list(params);
     const events = response.data.items || [];
-    
+
     return {
       content: [{
         type: "text",
@@ -510,13 +511,13 @@ async function listEvents(args) {
 async function getEvent(args) {
   const calendar = getCalendarClient();
   const calendarId = args.calendar_id || 'primary';
-  
+
   try {
     const response = await calendar.events.get({
       calendarId,
       eventId: args.event_id
     });
-    
+
     return {
       content: [{
         type: "text",
@@ -532,37 +533,37 @@ async function getEvent(args) {
 async function updateEvent(args) {
   const calendar = getCalendarClient();
   const calendarId = args.calendar_id || 'primary';
-  
+
   try {
     // First get the current event
     const currentEvent = await calendar.events.get({
       calendarId,
       eventId: args.event_id
     });
-    
+
     const event = currentEvent.data;
-    
+
     // Update only provided fields
     if (args.title !== undefined) event.summary = args.title;
     if (args.description !== undefined) event.description = args.description;
     if (args.location !== undefined) event.location = args.location;
     if (args.start_time !== undefined) {
-      event.start = { dateTime: args.start_time, timeZone: 'America/Sao_Paulo' };
+      event.start = { dateTime: args.start_time, timeZone: 'America/Sao_Paulo' }; // Changed from 'UTC' to 'America/Sao_Paulo'
     }
     if (args.end_time !== undefined) {
-      event.end = { dateTime: args.end_time, timeZone: 'America/Sao_Paulo' };
+      event.end = { dateTime: args.end_time, timeZone: 'America/Sao_Paulo' }; // Changed from 'UTC' to 'America/Sao_Paulo'
     }
     if (args.attendees !== undefined) {
       event.attendees = args.attendees.map(email => ({ email }));
     }
-    
+
     const response = await calendar.events.update({
       calendarId,
       eventId: args.event_id,
       resource: event,
       sendNotifications: true
     });
-    
+
     return {
       content: [{
         type: "text",
@@ -578,20 +579,20 @@ async function updateEvent(args) {
 async function deleteEvent(args) {
   const calendar = getCalendarClient();
   const calendarId = args.calendar_id || 'primary';
-  
+
   try {
     // First get event details for confirmation
     const event = await calendar.events.get({
       calendarId,
       eventId: args.event_id
     });
-    
+
     await calendar.events.delete({
       calendarId,
       eventId: args.event_id,
       sendNotifications: true
     });
-    
+
     return {
       content: [{
         type: "text",
@@ -606,14 +607,14 @@ async function deleteEvent(args) {
 
 async function listCalendars(args) {
   const calendar = getCalendarClient();
-  
+
   try {
     const response = await calendar.calendarList.list({
       maxResults: args.max_results || 10
     });
-    
+
     const calendars = response.data.items || [];
-    
+
     return {
       content: [{
         type: "text",
@@ -629,18 +630,19 @@ async function listCalendars(args) {
 async function searchEvents(args) {
   const calendar = getCalendarClient();
   const calendarId = args.calendar_id || 'primary';
-  
+
   try {
     const response = await calendar.events.list({
       calendarId,
       q: args.query,
       maxResults: args.max_results || 10,
       singleEvents: true,
-      orderBy: 'startTime'
+      orderBy: 'startTime',
+      timeZone: 'America/Sao_Paulo' // Added timeZone for searching events
     });
-    
+
     const events = response.data.items || [];
-    
+
     return {
       content: [{
         type: "text",
@@ -679,7 +681,7 @@ app.get('/info', (req, res) => {
 // Root endpoint
 app.get('/', (req, res) => {
   const authStatus = isAuthenticated();
-  
+
   res.send(`
     <html>
       <head>
@@ -698,14 +700,14 @@ app.get('/', (req, res) => {
         <p>Version: ${SERVER_INFO.version}</p>
         
         <div class="status ${authStatus ? 'success' : 'warning'}">
-          ${authStatus ? 
-            '✅ Google Calendar Connected' : 
+          ${authStatus ?
+            '✅ Google Calendar Connected' :
             '⚠️ Google Calendar Not Connected'
           }
         </div>
         
-        ${!authStatus ? 
-          `<p><a href="/auth" class="button">Connect Google Calendar</a></p>` : 
+        ${!authStatus ?
+          `<p><a href="/auth" class="button">Connect Google Calendar</a></p>` :
           ''
         }
         
