@@ -446,11 +446,11 @@ async function createEvent(args) {
     location: args.location || '',
     start: {
       dateTime: args.start_time,
-      timeZone: 'UTC'
+      timeZone: 'America/Sao_Paulo'
     },
     end: {
       dateTime: args.end_time,
-      timeZone: 'UTC'
+      timeZone: 'America/Sao_Paulo'
     }
   };
   
@@ -547,10 +547,10 @@ async function updateEvent(args) {
     if (args.description !== undefined) event.description = args.description;
     if (args.location !== undefined) event.location = args.location;
     if (args.start_time !== undefined) {
-      event.start = { dateTime: args.start_time, timeZone: 'UTC' };
+      event.start = { dateTime: args.start_time, timeZone: 'America/Sao_Paulo' };
     }
     if (args.end_time !== undefined) {
-      event.end = { dateTime: args.end_time, timeZone: 'UTC' };
+      event.end = { dateTime: args.end_time, timeZone: 'America/Sao_Paulo' };
     }
     if (args.attendees !== undefined) {
       event.attendees = args.attendees.map(email => ({ email }));
